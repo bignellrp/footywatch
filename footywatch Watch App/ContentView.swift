@@ -17,47 +17,49 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                HStack(spacing: 20) {
+                VStack(spacing: 20) { // changed from HStack to VStack
                     ScrollView {
                         Text("TeamA: \(teamacount)")
                         
+                        // For Team A
                         ForEach(playersA.indices, id: \.self) { index in
-                            Button(action:
-                                {
+                            Button(action: {
                                 countsA[index] += 1
                                 self.teamacount += 1
+                            }) {
+                                Text("\(playersA[index].name) \(countsA[index])")
                             }
-                            )
-                            { Text("\(playersA[index].name) \(countsA[index])")}.buttonStyle(PlainButtonStyle())
+                            .buttonStyle(PlainButtonStyle())
+                            .background(Color.red) // Add this line to change background color
                         }
-                        
                     }
-                    
+
                     ScrollView {
                         Text("TeamB: \(teambcount)")
-                        
+
+                        // For Team B
                         ForEach(playersB.indices, id: \.self) { index in
-                            Button(action:
-                                {
+                            Button(action: {
                                 countsB[index] += 1
                                 self.teambcount += 1
+                            }) {
+                                Text("\(playersB[index].name) \(countsB[index])")
                             }
-                            )
-                            { Text("\(playersB[index].name) \(countsB[index])")}.buttonStyle(PlainButtonStyle())
+                            .buttonStyle(PlainButtonStyle())
+                            .background(Color.blue) // Add this line to change background color
                         }
-                        
                     }
                 }
                 .frame(maxWidth: .infinity)
-                
+
                 NavigationLink(destination: ResetView(teamACount: $teamacount, teamBCount: $teambcount), isActive: $showingResetView) {
-                  EmptyView()
+                    EmptyView()
                 }
             }
             .onLongPressGesture(minimumDuration: 2) {
                 self.showingResetView = true
             }
-        
+
             Button(action: {
                 self.teamacount = 0
                 self.teambcount = 0
