@@ -19,35 +19,78 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 20) { // changed from HStack to VStack
                     ScrollView {
-                        Text("TeamA: \(teamacount)")
-                        
+                        //Text("TeamA: \(teamacount)")
+                        // Total Scores
+                        Text("Team A Score: \(self.teamacount)")
+                            .font(.title)
+                        Text("Team B Score: \(self.teambcount)")
+                            .font(.title)
+
                         // For Team A
                         ForEach(playersA.indices, id: \.self) { index in
-                            Button(action: {
-                                countsA[index] += 1
-                                self.teamacount += 1
-                            }) {
-                                Text("\(playersA[index].name) \(countsA[index])")
+                            HStack {
+                                Button(action: {
+                                    if countsA[index] > 0 {
+                                        countsA[index] -= 1
+                                        self.teamacount -= 1
+                                    }
+                                }) {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.red)
+
+                                VStack(alignment: .leading) {
+                                    Text("\(playersA[index].name)").font(.title)
+                                    Text("Score: \(countsA[index])").font(.headline)
+                                }
+
+                                Button(action: {
+                                    countsA[index] += 1
+                                    self.teamacount += 1
+                                }) {
+                                    Image(systemName: "plus.circle")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.red)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.red) // Add this line to change background color
                         }
+
                     }
 
                     ScrollView {
-                        Text("TeamB: \(teambcount)")
+                        //Text("TeamB: \(teambcount)")
 
                         // For Team B
                         ForEach(playersB.indices, id: \.self) { index in
-                            Button(action: {
-                                countsB[index] += 1
-                                self.teambcount += 1
-                            }) {
-                                Text("\(playersB[index].name) \(countsB[index])")
+                            HStack {
+                                Button(action: {
+                                    if countsB[index] > 0 {
+                                        countsB[index] -= 1
+                                        self.teambcount -= 1
+                                    } 
+                                }) {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.blue)
+
+                                VStack(alignment: .leading) {
+                                    Text("\(playersB[index].name)").font(.title)
+                                    Text("Score: \(countsB[index])").font(.headline)
+                                }
+
+                                Button(action: {
+                                    countsB[index] += 1
+                                    self.teambcount += 1
+                                }) {
+                                    Image(systemName: "plus.circle")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .background(Color.blue)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .background(Color.blue) // Add this line to change background color
                         }
+
                     }
                 }
                 .frame(maxWidth: .infinity)
