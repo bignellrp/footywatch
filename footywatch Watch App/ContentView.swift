@@ -5,6 +5,15 @@ struct Player {
     var name: String
 }
 
+// Define the ScorePosting protocol:
+protocol ScorePosting {
+    func postScores(_ token: String, teamAScore: Int, teamBScore: Int)
+    func fetchToken() -> String
+}
+
+// Make ContentView conform to this protocol:
+extension ContentView: ScorePosting { }
+
 struct ContentView: View {
 
     @State var teamacount: Int = 0
@@ -65,8 +74,14 @@ struct ContentView: View {
                     
                 }.frame(maxWidth: .infinity)
 
-                NavigationLink(destination: ResetView(teamACount: $teamacount, teamBCount: $teambcount, countsA: $countsA, countsB: $countsB), isActive: $showingResetView) {
-                    EmptyView()
+                NavigationLink(destination: ResetView(
+                    teamACount: $teamacount,
+                    teamBCount: $teambcount,
+                    countsA: $countsA,
+                    countsB: $countsB,
+                    scorePoster: self),  // Pass self as the scorePoster
+                    isActive: $showingResetView) {
+                        EmptyView()
                 }
             }
             .onLongPressGesture(minimumDuration: 2) {
@@ -74,9 +89,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            //let token = fetchToken()
-            let token = ""
-            loadTeams(urlString: "https://footyapp-api-dev.richardbignell.co.uk/games/most_recent_game", token: token)
+            let token = fetchToken()
+            loadTeams(urlStringA: "https://footyapp-api-dev.richardbignell.co.uk/games/teama",urlStringB: "https://footyapp-api-dev.richardbignell.co.uk/games/teamb", token: token)
         }
     }
 
@@ -110,72 +124,116 @@ struct ContentView: View {
     }
  
     func fetchToken() -> String {
-        var nsDictionary: NSDictionary?
-        if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist") {
-            nsDictionary = NSDictionary(contentsOfFile: path)
-        }
-        guard let token = nsDictionary?["TOKEN"] as? String else {
-            fatalError("Missing API token from Secrets.plist")
-        }
+        //var nsDictionary: NSDictionary?
+        //if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist") {
+        //    nsDictionary = NSDictionary(contentsOfFile: path)
+        //}
+        //guard let token = nsDictionary?["TOKEN"] as? String else {
+        //    fatalError("Missing API token from Secrets.plist")
+        //}
+        let token = ""
         return token
     }
 
-    func loadTeams(urlString: String, token: String) {
-        guard let url = URL(string: urlString) else { return }
+    func postScores(_ token: String, teamAScore: Int, teamBScore: Int) {
+        // Date needs to either be converted to todays date but that will only allow updating on the same day
+        // Or need to work out most recent date (maybe pull this from the get players api)
+        guard let url = URL(string: "https://footyapp-api-dev.richardbignell.co.uk/games/updatescore/2023-10-04") else { return }
+
+        let scoreData = ["scoreTeamA": teamAScore, "scoreTeamB": teamBScore]
         
         var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // encode your data into JSON
+        let jsonData = try! JSONEncoder().encode(scoreData)
+        
+        URLSession.shared.uploadTask(with: request, from: jsonData) { data, response, error in
+            if let error = error {
+                print ("Error:", error)
+            } else if let data = data {
+                let str = String(data: data, encoding: .utf8)
+                print("Received data:\n\(str ?? "")")
+            }
+        }.resume()
+    }
 
-        URLSession.shared.dataTask(with: request) { (data, response, error) in
+    func loadTeams(urlStringA: String, urlStringB: String, token: String) {
+        guard let urlA = URL(string: urlStringA), let urlB = URL(string: urlStringB) else { return }
+        
+        let dispatchGroup = DispatchGroup()
+        
+        var requestA = URLRequest(url: urlA)
+        var requestB = URLRequest(url: urlB)
+        requestA.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        requestB.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        // Request for Team A
+        dispatchGroup.enter()
+        URLSession.shared.dataTask(with: requestA) { (data, response, error) in
             if let error = error {
                 print("Error:", error)
-            } 
-            else if let data = data {
-
-                struct ApiResponse: Codable {
-                    let game: Game
-                }
-
-                struct Game: Codable {
-                    let playersA: [TeamMember]
-                    let playersB: [TeamMember]
-                }
-
-                struct TeamMember: Codable {
-                    let name: String
-                }
-                
+            } else if let data = data {
                 do {
                     let decoder = JSONDecoder()
-                    let apiResponse = try decoder.decode(ApiResponse.self, from: data)
+                    let teamMembers = try decoder.decode([[String]].self, from: data)
 
                     DispatchQueue.main.async {
-                        self.playersA = apiResponse.game.playersA.map { Player(name: $0.name) }
-                        self.playersB = apiResponse.game.playersB.map { Player(name: $0.name) }
-
+                        self.playersA = teamMembers[0].map { Player(name: $0) }
                         self.countsA = Array(repeating: 0, count: self.playersA.count)
+                    }
+                } catch {
+                    print("Failed to decode JSON for Team A: \(error)")
+                }
+            }
+            dispatchGroup.leave()
+        }.resume()
+
+        // Request for Team B
+        dispatchGroup.enter()
+        URLSession.shared.dataTask(with: requestB) { (data, response, error) in
+            if let error = error {
+                print("Error:", error)
+            } else if let data = data {
+                do {
+                    let decoder = JSONDecoder()
+                    let teamMembers = try decoder.decode([[String]].self, from: data)
+
+                    DispatchQueue.main.async {
+                        self.playersB = teamMembers[0].map { Player(name: $0) }
                         self.countsB = Array(repeating: 0, count: self.playersB.count)
                     }
                 } catch {
-                    print("Failed to decode JSON: \(error)")
+                    print("Failed to decode JSON for Team B: \(error)")
                 }
             }
+            dispatchGroup.leave()
         }.resume()
+
+        // Notify when both requests are done
+        dispatchGroup.notify(queue: .main) {
+            print("Both playersA and playersB are populated.")
+        }
     }
 }
 
 struct ResetView: View {
-
     @Binding var teamACount: Int
     @Binding var teamBCount: Int
 
     @Binding var countsA: [Int]
     @Binding var countsB: [Int]
 
+    // Add a variable of type ScorePosting
+    var scorePoster: ScorePosting
+
+    // Update the body to call functions on scorePoster
     var body: some View {
         VStack {
-            Text("You can reset your scores here.")
-
+            Text("Menu:")
+            
             Button(action: {
                 self.teamACount = 0
                 self.teamBCount = 0
@@ -183,6 +241,13 @@ struct ResetView: View {
                 self.countsB = Array(repeating: 0, count: countsB.count)
             }) {
                 Text("Reset")
+            }
+            Button(action: {
+                self.scorePoster.postScores(self.scorePoster.fetchToken(), 
+                    teamAScore: self.teamACount,
+                    teamBScore: self.teamBCount)
+            }) {
+                Text("Post Scores")
             }
         }
     }
