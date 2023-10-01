@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct Player {
     var name: String
@@ -12,8 +13,11 @@ struct ContentView: View {
     @State var countsB = Array(repeating: 0, count: 5)
     @State var showingResetView = false
 
-    let playersA = [Player(name: "Rik"), Player(name: "Joe"), Player(name: "Cal"), Player(name: "Pete"), Player(name: "Arun")]
-    let playersB = [Player(name: "Darren"), Player(name: "Phil"), Player(name: "Josh"), Player(name: "Ollie"), Player(name: "Mark")]
+    @State var playersA: [Player] = []
+    @State var playersB: [Player] = []
+
+    //let playersA = [Player(name: "Rik"), Player(name: "Joe"), Player(name: "Cal"), Player(name: "Pete"), Player(name: "Arun")]
+    //let playersB = [Player(name: "Darren"), Player(name: "Phil"), Player(name: "Josh"), Player(name: "Ollie"), Player(name: "Mark")]
 
     var body: some View {
         NavigationView {
@@ -70,8 +74,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            loadTeama()
-            loadTeamB()
+            //let token = fetchToken()
+            let token = ""
+            loadTeams(urlString: "https://footyapp-api-dev.richardbignell.co.uk/games/most_recent_game", token: token)
         }
     }
 
@@ -104,33 +109,55 @@ struct ContentView: View {
         }
     }
  
-    func loadTeama() {
-        guard let url = URL(string: "https://footyappdev.richardbignell.co.uk/teama.txt") else { return }
-        
-        URLSession.shared.dataTask(with: url) { (data, response, error) in
-            guard let data = data else { return }
-
-            if let fileContents = String(data: data, encoding: .utf8) {
-                let lines = fileContents.components(separatedBy: "\n")
-                
-                DispatchQueue.main.async {
-                    // Update your UI here
-                }
-            }
-        }.resume()
+    func fetchToken() -> String {
+        var nsDictionary: NSDictionary?
+        if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist") {
+            nsDictionary = NSDictionary(contentsOfFile: path)
+        }
+        guard let token = nsDictionary?["TOKEN"] as? String else {
+            fatalError("Missing API token from Secrets.plist")
+        }
+        return token
     }
 
-    func loadTeamB() {
-        guard let url = URL(string: "https://footyappdev.richardbignell.co.uk/teamb.txt") else { return }
+    func loadTeams(urlString: String, token: String) {
+        guard let url = URL(string: urlString) else { return }
         
-        URLSession.shared.dataTask(with: url) { (data, response, error) in
-            guard let data = data else { return }
+        var request = URLRequest(url: url)
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-            if let fileContents = String(data: data, encoding: .utf8) {
-                let lines = fileContents.components(separatedBy: "\n")
+        URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                print("Error:", error)
+            } 
+            else if let data = data {
+
+                struct ApiResponse: Codable {
+                    let game: Game
+                }
+
+                struct Game: Codable {
+                    let playersA: [TeamMember]
+                    let playersB: [TeamMember]
+                }
+
+                struct TeamMember: Codable {
+                    let name: String
+                }
                 
-                DispatchQueue.main.async {
-                    // Update your UI here
+                do {
+                    let decoder = JSONDecoder()
+                    let apiResponse = try decoder.decode(ApiResponse.self, from: data)
+
+                    DispatchQueue.main.async {
+                        self.playersA = apiResponse.game.playersA.map { Player(name: $0.name) }
+                        self.playersB = apiResponse.game.playersB.map { Player(name: $0.name) }
+
+                        self.countsA = Array(repeating: 0, count: self.playersA.count)
+                        self.countsB = Array(repeating: 0, count: self.playersB.count)
+                    }
+                } catch {
+                    print("Failed to decode JSON: \(error)")
                 }
             }
         }.resume()
