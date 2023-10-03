@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3DA9DB802AC963AA002803E3 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3DA9DB7F2AC963AA002803E3 /* Secrets.plist */; };
 		3DEC965029FEB35200AC8AAF /* footywatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3DEC964F29FEB35200AC8AAF /* footywatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3DEC965529FEB35200AC8AAF /* footywatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DEC965429FEB35200AC8AAF /* footywatchApp.swift */; };
 		3DEC965729FEB35200AC8AAF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DEC965629FEB35200AC8AAF /* ContentView.swift */; };
@@ -57,7 +56,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		3DA9DB7F2AC963AA002803E3 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Secrets.plist; path = "footywatch Watch App/Secrets.plist"; sourceTree = "<group>"; };
 		3DEC964929FEB35200AC8AAF /* footywatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = footywatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DEC964F29FEB35200AC8AAF /* footywatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "footywatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DEC965429FEB35200AC8AAF /* footywatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = footywatchApp.swift; sourceTree = "<group>"; };
@@ -99,7 +97,6 @@
 		3DEC964229FEB35100AC8AAF = {
 			isa = PBXGroup;
 			children = (
-				3DA9DB7F2AC963AA002803E3 /* Secrets.plist */,
 				3DEC965329FEB35200AC8AAF /* footywatch Watch App */,
 				3DEC966429FEB35300AC8AAF /* footywatch Watch AppTests */,
 				3DEC966E29FEB35300AC8AAF /* footywatch Watch AppUITests */,
@@ -279,7 +276,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3DA9DB802AC963AA002803E3 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

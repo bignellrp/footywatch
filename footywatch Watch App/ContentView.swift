@@ -8,6 +8,7 @@ struct Player {
 // Define the ScorePosting protocol:
 protocol ScorePosting {
     func postScores(_ token: String, teamAScore: Int, teamBScore: Int)
+    func postFinalScores()
     func fetchToken() -> String
 }
 
@@ -124,40 +125,74 @@ struct ContentView: View {
     }
  
     func fetchToken() -> String {
-        //var nsDictionary: NSDictionary?
-        //if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist") {
-        //    nsDictionary = NSDictionary(contentsOfFile: path)
-        //}
-        //guard let token = nsDictionary?["TOKEN"] as? String else {
-        //    fatalError("Missing API token from Secrets.plist")
-        //}
-        let token = ""
+        guard let token = ProcessInfo.processInfo.environment["API_TOKEN"] else {
+            fatalError("Missing API token from environment variables")
+        }
+        
         return token
     }
 
     func postScores(_ token: String, teamAScore: Int, teamBScore: Int) {
-        // Date needs to either be converted to todays date but that will only allow updating on the same day
-        // Or need to work out most recent date (maybe pull this from the get players api)
         guard let url = URL(string: "https://footyapp-api-dev.richardbignell.co.uk/games/updatescore/2023-10-04") else { return }
-
+    
         let scoreData = ["scoreTeamA": teamAScore, "scoreTeamB": teamBScore]
-        
+            
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // encode your data into JSON
+            
         let jsonData = try! JSONEncoder().encode(scoreData)
-        
+            
         URLSession.shared.uploadTask(with: request, from: jsonData) { data, response, error in
-            if let error = error {
-                print ("Error:", error)
-            } else if let data = data {
-                let str = String(data: data, encoding: .utf8)
-                print("Received data:\n\(str ?? "")")
+            DispatchQueue.main.async {
+                if let error = error {
+                    print ("Error:", error)
+                } else if let data = data {
+                    let str = String(data: data, encoding: .utf8)
+                    print("Received data:\n\(str ?? "")")
+                }
             }
         }.resume()
+    }
+
+    func postPlayerScore(_ token: String, playerName: String, playerScore: Int) {
+        print("Posting score for \(playerName) with value \(playerScore)")
+        guard let url = URL(string: "https://footyapp-api-dev.richardbignell.co.uk/players/goals/\(playerName)") else { return }
+    
+        let scoreData = ["goals": playerScore]
+            
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+        let jsonData = try! JSONEncoder().encode(scoreData)
+            
+        URLSession.shared.uploadTask(with: request, from: jsonData) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print ("Error:", error)
+                } else if let data = data, let response = response as? HTTPURLResponse {
+                    let str = String(data: data, encoding: .utf8)
+                    print("Received data:\n\(str ?? ""), Status Code: \(response.statusCode)")
+                }
+            }
+        }.resume()
+    }
+
+    func postFinalScores() {
+        for index in 0..<playersA.count {
+            let playerName = playersA[index].name
+            let playerScore = countsA[index]
+            self.postPlayerScore(self.fetchToken(), playerName: playerName, playerScore: playerScore)
+        }
+
+        for index in 0..<playersB.count {
+            let playerName = playersB[index].name
+            let playerScore = countsB[index]
+            self.postPlayerScore(self.fetchToken(), playerName: playerName, playerScore: playerScore)
+        }
     }
 
     func loadTeams(urlStringA: String, urlStringB: String, token: String) {
@@ -222,7 +257,7 @@ struct ContentView: View {
 struct ResetView: View {
     @Binding var teamACount: Int
     @Binding var teamBCount: Int
-
+    @State private var showAlert = false
     @Binding var countsA: [Int]
     @Binding var countsB: [Int]
 
@@ -233,7 +268,26 @@ struct ResetView: View {
     var body: some View {
         VStack {
             Text("Menu:")
-            
+            Button(action: {
+                self.scorePoster.postScores(self.scorePoster.fetchToken(), 
+                    teamAScore: self.teamACount,
+                    teamBScore: self.teamBCount)
+                self.scorePoster.postFinalScores()
+                self.showAlert = true
+                // Now Scores are posted, reset the values back to zero
+                self.teamACount = 0
+                self.teamBCount = 0
+                self.countsA = Array(repeating: 0, count: countsA.count)
+                self.countsB = Array(repeating: 0, count: countsB.count)
+            }) {
+                Text("Post")
+            }
+            .alert(isPresented: $showAlert) { 
+            Alert(title: Text("Posting Goals and Scores..."), 
+                  message: Text("Post Successful!"), 
+                  dismissButton: .default(Text("OK!"))
+            )
+            }
             Button(action: {
                 self.teamACount = 0
                 self.teamBCount = 0
@@ -241,13 +295,6 @@ struct ResetView: View {
                 self.countsB = Array(repeating: 0, count: countsB.count)
             }) {
                 Text("Reset")
-            }
-            Button(action: {
-                self.scorePoster.postScores(self.scorePoster.fetchToken(), 
-                    teamAScore: self.teamACount,
-                    teamBScore: self.teamBCount)
-            }) {
-                Text("Post Scores")
             }
         }
     }
