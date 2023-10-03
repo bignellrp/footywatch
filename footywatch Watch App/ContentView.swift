@@ -5,14 +5,22 @@ struct Player {
     var name: String
 }
 
-// Define the ScorePosting protocol:
+struct TeamAResponse: Decodable {
+    let teamA: [[String]]
+    let date: String
+}
+
+struct TeamBResponse: Decodable {
+    let teamB: [[String]]
+    let date: String
+}
+
 protocol ScorePosting {
-    func postScores(_ token: String, teamAScore: Int, teamBScore: Int)
+    func postScores(_ token: String, teamAScore: Int, teamBScore: Int, gameDate: String)
     func postFinalScores()
     func fetchToken() -> String
 }
 
-// Make ContentView conform to this protocol:
 extension ContentView: ScorePosting { }
 
 struct ContentView: View {
@@ -25,9 +33,7 @@ struct ContentView: View {
 
     @State var playersA: [Player] = []
     @State var playersB: [Player] = []
-
-    //let playersA = [Player(name: "Rik"), Player(name: "Joe"), Player(name: "Cal"), Player(name: "Pete"), Player(name: "Arun")]
-    //let playersB = [Player(name: "Darren"), Player(name: "Phil"), Player(name: "Josh"), Player(name: "Ollie"), Player(name: "Mark")]
+    @State var gameDate: String = ""
 
     var body: some View {
         NavigationView {
@@ -80,6 +86,7 @@ struct ContentView: View {
                     teamBCount: $teambcount,
                     countsA: $countsA,
                     countsB: $countsB,
+                    gameDate: $gameDate,
                     scorePoster: self),  // Pass self as the scorePoster
                     isActive: $showingResetView) {
                         EmptyView()
@@ -132,9 +139,9 @@ struct ContentView: View {
         return token
     }
 
-    func postScores(_ token: String, teamAScore: Int, teamBScore: Int) {
-        guard let url = URL(string: "https://footyapp-api-dev.richardbignell.co.uk/games/updatescore/2023-10-04") else { return }
-    
+    func postScores(_ token: String, teamAScore: Int, teamBScore: Int, gameDate: String) {
+        guard let url = URL(string: "https://footyapp-api-dev.richardbignell.co.uk/games/updatescore/\(gameDate)") else { return }
+        
         let scoreData = ["scoreTeamA": teamAScore, "scoreTeamB": teamBScore]
             
         var request = URLRequest(url: url)
@@ -197,13 +204,16 @@ struct ContentView: View {
 
     func loadTeams(urlStringA: String, urlStringB: String, token: String) {
         guard let urlA = URL(string: urlStringA), let urlB = URL(string: urlStringB) else { return }
-        
+            
         let dispatchGroup = DispatchGroup()
         
         var requestA = URLRequest(url: urlA)
         var requestB = URLRequest(url: urlB)
         requestA.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         requestB.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        // Create a JSONDecoder instance here
+        let decoder = JSONDecoder()
 
         // Request for Team A
         dispatchGroup.enter()
@@ -212,17 +222,17 @@ struct ContentView: View {
                 print("Error:", error)
             } else if let data = data {
                 do {
-                    let decoder = JSONDecoder()
-                    let teamMembers = try decoder.decode([[String]].self, from: data)
+                    let result = try decoder.decode(TeamAResponse.self, from: data)
 
                     DispatchQueue.main.async {
-                        self.playersA = teamMembers[0].map { Player(name: $0) }
+                        self.playersA = result.teamA.flatMap { $0.map { Player(name: $0) } }
                         self.countsA = Array(repeating: 0, count: self.playersA.count)
+                        self.gameDate = result.date
                     }
                 } catch {
-                    print("Failed to decode JSON for Team A: \(error)")
+                    print("Failed to decode: \(error)")
                 }
-            }
+                }
             dispatchGroup.leave()
         }.resume()
 
@@ -233,15 +243,15 @@ struct ContentView: View {
                 print("Error:", error)
             } else if let data = data {
                 do {
-                    let decoder = JSONDecoder()
-                    let teamMembers = try decoder.decode([[String]].self, from: data)
+                    let result = try decoder.decode(TeamBResponse.self, from: data)
 
                     DispatchQueue.main.async {
-                        self.playersB = teamMembers[0].map { Player(name: $0) }
+                        self.playersB = result.teamB.flatMap { $0.map { Player(name: $0) } }
                         self.countsB = Array(repeating: 0, count: self.playersB.count)
+                        self.gameDate = result.date
                     }
                 } catch {
-                    print("Failed to decode JSON for Team B: \(error)")
+                    print("Failed to decode: \(error)")
                 }
             }
             dispatchGroup.leave()
@@ -260,6 +270,7 @@ struct ResetView: View {
     @State private var showAlert = false
     @Binding var countsA: [Int]
     @Binding var countsB: [Int]
+    @Binding var gameDate: String
 
     // Add a variable of type ScorePosting
     var scorePoster: ScorePosting
@@ -270,8 +281,9 @@ struct ResetView: View {
             Text("Menu:")
             Button(action: {
                 self.scorePoster.postScores(self.scorePoster.fetchToken(), 
-                    teamAScore: self.teamACount,
-                    teamBScore: self.teamBCount)
+                                            teamAScore: self.teamACount,
+                                            teamBScore: self.teamBCount,
+                                            gameDate: self.gameDate)
                 self.scorePoster.postFinalScores()
                 self.showAlert = true
                 // Now Scores are posted, reset the values back to zero
