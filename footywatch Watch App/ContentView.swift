@@ -70,31 +70,31 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) { 
-                    
+                    let teamAColorDetails = self.colourDetailsForName(self.colourA)
+                    let teamBColorDetails = self.colourDetailsForName(self.colourB)
+
                     HStack {
                         Text("Team A")
                             .font(.title)
-                            .foregroundColor(.white)
-                            
+                            .foregroundColor(teamAColorDetails.isLight ? Color.white : Color.black)
                         Text("Score: \(self.teamacount)")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(teamAColorDetails.isLight ? Color.white : Color.black)
                     }
-                    .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8)) // Adjust padding here
-                    .background(colourForName(self.colourA))
+                    .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8))
+                    .background(teamAColorDetails.color)
                     .cornerRadius(10)
 
                     HStack {
                         Text("Team B")
                             .font(.title)
-                            .foregroundColor(.white)
-                            
+                            .foregroundColor(teamBColorDetails.isLight ? Color.white : Color.black)
                         Text("Score: \(self.teambcount)")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(teamBColorDetails.isLight ? Color.white : Color.black)
                     }
-                    .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8)) // Adjust padding here
-                    .background(colourForName(self.colourB))
+                    .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8))
+                    .background(teamBColorDetails.color)
                     .cornerRadius(10)
 
 
@@ -133,22 +133,24 @@ struct ContentView: View {
         }
     }
 
-    let colourMap: [String: String] = [
-        "green": "#00FF00",
-        "blue": "#4169E1",
-        "black": "#000000",
-        "darrenschoice": "#ADD8E6",
-        "multicoloured": "#FF0000",
-        "pink": "#FF69B4",
-        "red": "#FF0000",
-        "stripes": "#000000",
-        "white": "#FFFFFF",
-        "yellow": "#FFFF00"
+    let colourMap: [String: (hex: String, isLight: Bool)] = [
+        "green": ("#00FF00", true),
+        "blue": ("#4169E1", true),
+        "black": ("#000000", true),
+        "darrenschoice": ("#ADD8E6", false),
+        "multicoloured": ("#FF0000", true),
+        "pink": ("#FF69B4", true),
+        "red": ("#FF0000", true),
+        "stripes": ("#000000", true),
+        "white": ("#FFFFFF", false),
+        "yellow": ("#FFFF00", false),
     ]
 
-    func colourForName(_ colourName: String) -> Color {
-        let hexString = colourMap[colourName]
-        return Color(hex: hexString ?? "#000000") // default to black if color not found
+    func colourDetailsForName(_ colourName: String) -> (color: Color, isLight: Bool) {
+        let details = colourMap[colourName]
+        let hexString = details?.hex ?? "#000000" // default to black if color not found
+        let isLight = details?.isLight ?? false // default to dark if color not found
+        return (Color(hex: hexString), isLight)
     }
 
     func playerView(player: Player, count: Binding<Int>, teamCount: Binding<Int>, color: Color) -> some View {
