@@ -8,11 +8,13 @@ struct Player {
 struct TeamAResponse: Decodable {
     let teamA: [[String]]
     let date: String
+    let colourA: String
 }
 
 struct TeamBResponse: Decodable {
     let teamB: [[String]]
     let date: String
+    let colourB: String
 }
 
 protocol ScorePosting {
@@ -22,6 +24,33 @@ protocol ScorePosting {
 }
 
 extension ContentView: ScorePosting { }
+
+// SwiftUI does not natively support hex colors, so you can use an extension like this:
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
 
 struct ContentView: View {
 
@@ -34,6 +63,8 @@ struct ContentView: View {
     @State var playersA: [Player] = []
     @State var playersB: [Player] = []
     @State var gameDate: String = ""
+    @State var colourA: String = ""
+    @State var colourB: String = ""
 
     var body: some View {
         NavigationView {
@@ -50,7 +81,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                     }
                     .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8)) // Adjust padding here
-                    .background(Color.red)
+                    .background(colourForName(self.colourA))
                     .cornerRadius(10)
 
                     HStack {
@@ -63,7 +94,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                     }
                     .padding(.init(top: 3, leading: 8, bottom: 3, trailing: 8)) // Adjust padding here
-                    .background(Color.blue)
+                    .background(colourForName(self.colourB))
                     .cornerRadius(10)
 
 
@@ -100,6 +131,24 @@ struct ContentView: View {
             let token = fetchToken()
             loadTeams(urlStringA: "https://footyapp-api-dev.richardbignell.co.uk/games/teama",urlStringB: "https://footyapp-api-dev.richardbignell.co.uk/games/teamb", token: token)
         }
+    }
+
+    let colourMap: [String: String] = [
+        "green": "#00FF00",
+        "blue": "#4169E1",
+        "black": "#000000",
+        "darrenschoice": "#ADD8E6",
+        "multicoloured": "#FF0000",
+        "pink": "#FF69B4",
+        "red": "#FF0000",
+        "stripes": "#000000",
+        "white": "#FFFFFF",
+        "yellow": "#FFFF00"
+    ]
+
+    func colourForName(_ colourName: String) -> Color {
+        let hexString = colourMap[colourName]
+        return Color(hex: hexString ?? "#000000") // default to black if color not found
     }
 
     func playerView(player: Player, count: Binding<Int>, teamCount: Binding<Int>, color: Color) -> some View {
@@ -228,6 +277,7 @@ struct ContentView: View {
                         self.playersA = result.teamA.flatMap { $0.map { Player(name: $0) } }
                         self.countsA = Array(repeating: 0, count: self.playersA.count)
                         self.gameDate = result.date
+                        self.colourA = result.colourA
                     }
                 } catch {
                     print("Failed to decode: \(error)")
@@ -249,6 +299,7 @@ struct ContentView: View {
                         self.playersB = result.teamB.flatMap { $0.map { Player(name: $0) } }
                         self.countsB = Array(repeating: 0, count: self.playersB.count)
                         self.gameDate = result.date
+                        self.colourB = result.colourB
                     }
                 } catch {
                     print("Failed to decode: \(error)")
